@@ -26,6 +26,14 @@ router.get('/:id', [validateObjectId, authPatient],asyncwrapper(async (req: Requ
     res.status(200).json(patient);
 }));
 
+router.get('/:id/appointments', asyncwrapper( async(req: Request, res: Response) => {
+    // TODO: MQTT connection with appointment system
+}));
+
+router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request, res: Response) => {
+    // TODO: MQTT connection with appointment system
+}));
+
 
 // POST requests
 router.post('/', asyncwrapper( async(req: Request, res: Response) => {
@@ -60,6 +68,10 @@ router.post('/login', asyncwrapper( async(req: Request, res: Response) => {
     res.status(200).json({patient, "token": token});
 }));
 
+router.post('/appointments', asyncwrapper(async(req: Request, res: Response) => {
+    // TODO: MQTT connection with appointment system
+}));
+
 // PUT requests
 router.put('/:id', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res: Response) => {
     
@@ -85,6 +97,10 @@ router.delete('/:id', [validateObjectId], asyncwrapper(async (req: Request, res:
     if(!patient) return res.status(404).json({"message": "Patient with given id was not found."});
 
     res.status(200).json(patient);
+}));
+
+router.delete('/appointments/:appointment_id', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res:Response) => {
+    // TODO: MQTT connection implementation with appointment system
 }));
 
 // Exporting the router object
