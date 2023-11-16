@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { Patient, validateRegistration, validateUpdate } from "../../models/patientsModel";
 import validateObjectId from '../../middlewares/validObjectId'
 import asyncwrapper from "../../middlewares/asyncwrapper";
+import authPatient from "../../middlewares/authPatient";
 import bcrypt from 'bcrypt';
 
 const router = express.Router() 
@@ -16,13 +17,21 @@ router.get('/', asyncwrapper( async(req: Request, res: Response) => {
     return res.status(200).json(patients);
 }));
 
-router.get('/:id', [validateObjectId],asyncwrapper(async (req: Request, res: Response) => {
+router.get('/:id', [validateObjectId, authPatient],asyncwrapper(async (req: Request, res: Response) => {
 
     let patient = await Patient.findById(req.params.id).select('-password');
 
     if(!patient) return res.status(404).json({"message":"Patient with given id was not found"});
 
     res.status(200).json(patient);
+}));
+
+router.get('/:id/appointments', asyncwrapper( async(req: Request, res: Response) => {
+    // TODO: MQTT connection with appointment system
+}));
+
+router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request, res: Response) => {
+    // TODO: MQTT connection with appointment system
 }));
 
 
@@ -44,8 +53,27 @@ router.post('/', asyncwrapper( async(req: Request, res: Response) => {
     return res.status(201).json({"token": token, patient}) 
 }));
 
+router.post('/login', asyncwrapper( async(req: Request, res: Response) => {
+
+    if(!req.body.email || !req.body.password) return res.status(403).json({"message":"No email or password was provided"});
+
+    let patient = await Patient.findOne({email: req.body.email});
+    if(!patient) return res.status(404).json({"message":"Patient with given email does not exist"});
+
+    let match = await bcrypt.compare(req.body.password, patient.password.toString());
+    if(!match) return res.status(403).json({"message":"Wrong password"});
+
+    let token = await patient.signJWT();
+
+    res.status(200).json({patient, "token": token});
+}));
+
+router.post('/appointments', asyncwrapper(async(req: Request, res: Response) => {
+    // TODO: MQTT connection with appointment system
+}));
+
 // PUT requests
-router.put('/:id', [validateObjectId], asyncwrapper( async(req: Request, res: Response) => {
+router.put('/:id', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res: Response) => {
     
     let { error } = validateUpdate(req.body);
     if(error) return res.status(403).json({"message": "Invalid patient update format" + error.details[0].message});
@@ -69,6 +97,10 @@ router.delete('/:id', [validateObjectId], asyncwrapper(async (req: Request, res:
     if(!patient) return res.status(404).json({"message": "Patient with given id was not found."});
 
     res.status(200).json(patient);
+}));
+
+router.delete('/appointments/:appointment_id', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res:Response) => {
+    // TODO: MQTT connection implementation with appointment system
 }));
 
 // Exporting the router object
