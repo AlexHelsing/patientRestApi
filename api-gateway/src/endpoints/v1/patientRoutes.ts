@@ -65,7 +65,7 @@ router.post('/login', asyncwrapper( async(req: Request, res: Response) => {
 
     let token = await patient.signJWT();
 
-    res.status(200).json({patient, "token": token});
+    res.status(201).json({patient, "token": token});
 }));
 
 router.post('/appointments', asyncwrapper(async(req: Request, res: Response) => {
