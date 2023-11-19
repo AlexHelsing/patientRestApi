@@ -52,7 +52,7 @@ router.get('/:id/appointments', [validateObjectId], asyncwrapper( async(req: Req
 
     await Promise.all([subscribeAsync(), publishAsync()]);
 
-    // TODO: Add a timeout for requests take longer than 5 sec to resolve
+    // TODO: Add a timeout for requests that take longer than 5 sec to resolve.
     const response = await new Promise<any>((resolve) => {
         client.on('message', (topic, payload, packet) => {
             if(Restopic === topic) {
@@ -68,7 +68,52 @@ router.get('/:id/appointments', [validateObjectId], asyncwrapper( async(req: Req
 }));
 
 router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request, res: Response) => {
-    // TODO: MQTT connection with appointment system
+    let patient = await Patient.findById(req.params.id);
+    if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
+
+    if(!client.connected) return res.status(500).json({"message":"Internal server error"});
+
+    const Reqtopic = "Patient/get_appointments/req";
+    const Restopic = "Patient/get_appointments/res";
+
+    let publishAsync = () => new Promise<void>((resolve) => {
+        client.publish(Reqtopic, JSON.stringify({patient_id: patient?._id}), {qos: 1}, (err) => {
+            if(err !== null) console.log(err)
+            resolve();
+        })
+    });
+
+    let subscribeAsync = () => new Promise<void>((resolve) => {
+        client.subscribe(Restopic, (err) => {
+            if(err !== null) console.log(err);
+            resolve()
+        })
+    });
+
+    await Promise.all([subscribeAsync(), publishAsync()]);
+
+    // TODO: Add a timeout for requests that take longer than 5 sec to resolve.
+    const response = await new Promise<any>((resolve) => {
+        client.on('message', (topic, payload, packet) => {
+            if(Restopic === topic) {
+                client.unsubscribe(Restopic);
+                console.log(`topic: ${topic}, payload: ${payload}`);
+                resolve(JSON.parse(payload.toString()));
+            }
+        });
+    });
+    
+    let status = response.pop().status;
+
+    let appointment = response.find((appointment:any) => {
+        if(appointment._id === req.params.appointment_id){
+            return appointment;
+        }
+    })
+
+    if(!appointment) return res.status(404).json({"message": "Appointment with given id was not found"});
+    
+    return res.status(status).json(appointment);
 }));
 
 
