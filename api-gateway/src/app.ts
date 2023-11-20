@@ -4,7 +4,8 @@ import { routerV1 } from './endpoints/v1/routesV1';
 import  connectDB  from './dbConnection'
 import * as dotenv from 'dotenv';
 import { errorHandlerMiddleware } from './middlewares/errorMiddleware';
-
+import morgan from 'morgan';
+import logger from './logger';
 //For env File 
 
 dotenv.config({ path: 'src/config/.env' });
@@ -18,6 +19,7 @@ console.log(process.env.JWT_SECRET)
 //Middlewares
 app.use(cors());
 app.use(express.json());
+app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 app.use(errorHandlerMiddleware)
 
 
