@@ -151,9 +151,42 @@ router.post('/login', asyncwrapper( async(req: Request, res: Response) => {
     res.status(201).json({patient, "token": token});
 }));
 
-router.post('/:id/appointments', [authPatient], asyncwrapper(async(req: Request, res: Response) => {
-    //Only one single appointment object at a time.
-    
+router.post('/:id/appointments', [validateObjectId, authPatient], asyncwrapper(async(req: Request, res: Response) => {
+    let patient = await Patient.findById(req.params.id);
+    if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
+
+    if(!client.connected) return res.status(500).json({"message":"Internal server error"});
+
+    const Reqtopic = "Patient/make_appointment/req";
+    const Restopic = "Patient/make_appointment/res";
+
+    let subscribeAsync = () => new Promise<void>((resolve) => {
+        client.subscribe(Restopic, (err) => {
+            if(err !== null) console.log(err);
+            resolve();
+        });
+    })
+
+    let publishAsync = () => new Promise<void>((resolve) => {
+        client.publish(Reqtopic, JSON.stringify({patient_id: patient?._id, appointment_id: req.body.appointment_id}), {qos: 1}, (err) => {
+            if(err !== null) console.log(err);
+            resolve();
+        });
+    });
+
+    await Promise.all([subscribeAsync(), publishAsync()]);
+
+    const response = await new Promise<any>((resolve) => {
+        client.on('message', (topic, payload, packet) => {
+            if(topic === Restopic) {
+                client.unsubscribe(Restopic);
+                console.log(`topic: ${topic}, payload: ${payload}`);
+                resolve(JSON.parse(payload.toString()));
+            } 
+        });
+    });
+
+    res.status(response.status).json(response);
 }));
 
 // PUT requests
