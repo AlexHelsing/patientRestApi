@@ -1,8 +1,8 @@
 import mqtt from 'mqtt';
 
-const BROKER_URL = "ssl://5ff311e9715e436c9ea4b2668da36c2c.s2.eu.hivemq.cloud:8883"; 
-const USER = 'alexander';
-const PASSWORD = 'Dentist1!';
+const BROKER_URL = ""; 
+const USER = '';
+const PASSWORD = '';
 
 const options = {
     username: USER,
