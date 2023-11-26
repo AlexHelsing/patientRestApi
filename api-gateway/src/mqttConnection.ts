@@ -1,8 +1,8 @@
 import mqtt from 'mqtt';
 
-const BROKER_URL = process.env.BROKER_URL || "mqtt://localhost"; 
-const USER = process.env.USER || 'user';
-const PASSWORD = process.env.PASSWORD || 'password';
+const BROKER_URL = "ssl://5ff311e9715e436c9ea4b2668da36c2c.s2.eu.hivemq.cloud:8883"; 
+const USER = 'alexander';
+const PASSWORD = 'Dentist1!';
 
 const options = {
     username: USER,
@@ -43,6 +43,7 @@ let subscribeAsync = (resTopic: string) => new Promise<void>((resolve, reject) =
 async function handleMqtt(requestTopic: string, responseTopic: string, payload: object | Array<any> | string) {    
     
     await Promise.all([subscribeAsync(responseTopic), publishAsync(requestTopic, payload)]);
+    console.log(payload);
 
     return new Promise<any>((resolve, reject) => {
         

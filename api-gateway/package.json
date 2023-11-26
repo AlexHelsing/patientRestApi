@@ -24,6 +24,7 @@
     "morgan": "^1.10.0",
     "mqtt": "^5.3.0",
     "supertest": "^6.3.3",
+    "uuid": "^9.0.1",
     "winston": "^3.11.0"
   },
   "devDependencies": {
