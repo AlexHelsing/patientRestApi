@@ -37,10 +37,9 @@ router.get('/:id/appointments', [validateObjectId], asyncwrapper( async(req: Req
 
     let responseTopic: string = randomUUID();
 
-    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${patient.email}/get_appointments/res`, {patientId: patient._id, responseTopic})
+    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${responseTopic}/get_appointments/res`, {patientId: patient._id, responseTopic})
     // Expected response is an array of appointments [Last element in array is response status]  
-    let status = response.pop().status;  
-    res.status(status).json(response);
+    res.status(200).json(response);
 }));
 
 router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request, res: Response) => {
@@ -53,7 +52,7 @@ router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request
 
     let response = await handleMqtt('Patient/get_appointments/req', `Patient/${responseTopic}/get_appointments/res`, {patientId: patient._id, responseTopic: responseTopic})
     // Expected response is an array of appointments [Last element in array is response status]
-    let status = response.pop().status;
+
 
     let appointment = response.find((appointment:any) => {
         if(appointment._id === req.params.appointment_id){
@@ -63,7 +62,7 @@ router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request
 
     if(!appointment) return res.status(404).json({"message": "Appointment with given id was not found"});
     
-    return res.status(status).json(appointment);
+    return res.status(200).json(appointment);
 }));
 
 // POST requests
@@ -151,7 +150,7 @@ router.delete('/:id/appointments/:appointment_id', [validateObjectId, authPatien
     let response = await handleMqtt('Patient/cancel_appointment/req', `Patient/${responseTopic}/cancel_appointment/res`, {patientId: patient?._id, _id: req.params._id, responseTopic: responseTopic})
     // Expected response is an object with status property [other properties could be appointment and message.]
 
-    res.status(response.status).json(_.pick(response, ['message', 'isCancelled']));
+    res.status(200).json(_.pick(response, ['message', 'isCancelled']));
 }));
 
 // Exporting the router object
