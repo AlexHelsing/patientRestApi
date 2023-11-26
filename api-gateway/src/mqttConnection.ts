@@ -19,35 +19,53 @@ client.on('error', (err) => {
     console.error(err.message)
 })
 
-async function handleMqtt(client: mqtt.MqttClient, requestTopic: string, responseTopic: string, payload: object | Array<any>){
+let publishAsync = (reqTopic: string, payload: object | Array<any> | string) => new Promise<void>((resolve, reject) => {
+    client.publish(reqTopic, JSON.stringify(payload), {qos: 1}, (err) => {
+        if(err !== null) {
+            console.log(err)
+            reject(err)
+        }
+        resolve();
+    })
+});
 
-    let publishAsync = () => new Promise<void>((resolve) => {
-        client.publish(requestTopic, JSON.stringify(payload), {qos: 1}, (err) => {
-            if(err !== null) console.log(err)
-            resolve();
-        })
-    });
 
-    let subscribeAsync = () => new Promise<void>((resolve) => {
-        client.subscribe(responseTopic, (err) => {
-            if(err !== null) console.log(err);
-            resolve()
-        })
-    });
+let subscribeAsync = (resTopic: string) => new Promise<void>((resolve, reject) => {
+    client.subscribe(resTopic, (err) => {
+        if(err !== null) {
+            console.log(err);
+            reject(err);
+        }
+        resolve()
+    })
+});
 
-    await Promise.all([subscribeAsync(), publishAsync()]);
+async function handleMqtt(requestTopic: string, responseTopic: string, payload: object | Array<any> | string) {    
+    
+    await Promise.all([subscribeAsync(responseTopic), publishAsync(requestTopic, payload)]);
 
-    // TODO: Add a timeout for requests that take longer than 5 sec to resolve.
-    const response = await new Promise<any>((resolve) => {
+    return new Promise<any>((resolve, reject) => {
+        
+        let isResponsed = false;
+        
+        const timeout = setTimeout(() => {
+            if(!isResponsed) reject(new Error('Mqtt timeout'));
+        }, 6000);
+
         client.on('message', (topic, payload, packet) => {
             if(responseTopic === topic) {
-                client.unsubscribe(responseTopic);
-                console.log(`topic: ${topic}, payload: ${payload}`);
-                resolve(JSON.parse(payload.toString()));
-            }
-        });
+                try{
+                    isResponsed = true;
+                    clearTimeout(timeout);
+
+                    client.unsubscribe(responseTopic);
+                    console.log(`topic: ${topic}, payload: ${payload}`);
+                    resolve(JSON.parse(payload.toString()));
+                }catch(err) {
+                    reject(err)
+                }
+        }});        
     });
-    return response;
 }
 
 export {client, handleMqtt};

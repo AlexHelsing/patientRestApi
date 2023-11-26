@@ -34,18 +34,10 @@ router.get('/:id/appointments', [validateObjectId], asyncwrapper( async(req: Req
 
     if(!client.connected) return res.status(500).json({"message":"Internal server error"});
 
-    let response
-
-    try {
-        response = await handleMqtt(client, 'Patient/get_appointments/req', 'Patient/get_appointments/res', {patient_id: patient._id})
-        // Expected response is an array of appointments [Last element in array is response status]
-    }
-    catch(err) {
-        return res.status(500).json({"message":"Internal server error"});
-    }
-
-    let status = response.pop().status;
-    return res.status(status).json(response);    
+    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${patient.email}/get_appointments/res`, {patient_id: patient._id})
+    // Expected response is an array of appointments [Last element in array is response status]  
+    let status = response.pop().status;  
+    res.status(status).json(response);
 }));
 
 router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request, res: Response) => {
@@ -54,16 +46,8 @@ router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request
 
     if(!client.connected) return res.status(500).json({"message":"Internal server error"});
 
-    let response
-
-    try {
-        response = await handleMqtt(client, 'Patient/get_appointments/req', 'Patient/get_appointments/res', {patient_id: patient._id})
-        // Expected response is an array of appointments [Last element in array is response status]
-    }
-    catch(err) {
-        return res.status(500).json({"message":"Internal server error"});
-    }
-    
+    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${patient.email}/get_appointments/res`, {patient_id: patient._id})
+    // Expected response is an array of appointments [Last element in array is response status]
     let status = response.pop().status;
 
     let appointment = response.find((appointment:any) => {
@@ -116,15 +100,8 @@ router.post('/:id/appointments', [validateObjectId, authPatient], asyncwrapper(a
 
     if(!client.connected) return res.status(500).json({"message":"Internal server error"});
     
-    let response
-
-    try {
-        response = await handleMqtt(client, 'Patient/make_appointment/req', 'Patient/make_appointment/res', {patient_id: patient?._id, appointment_id: req.body.appointment_id})
-        // Expected response is an object with status property [other properties could be appointment and message.]
-    }
-    catch(err) {
-        return res.status(500).json({"message":"Internal server error"});
-    }
+    let response = await handleMqtt('Patient/make_appointment/req', `Patient/${patient.email}/make_appointment/res`, {patient_id: patient?._id, appointment_id: req.body.appointment_id})
+    // Expected response is an object with status property [other properties could be appointment and message.]
 
     res.status(response.status).json(response);
 }));
@@ -162,15 +139,8 @@ router.delete('/:id/appointments/:appointment_id', [validateObjectId, authPatien
 
     if(!client.connected) return res.status(500).json({"message":"Internal server error"});
 
-    let response
-
-    try {
-        response = await handleMqtt(client, 'Patient/cancel_appointment/req', 'Patient/cancel_appointment/res', {patient_id: patient?._id, appointment_id: req.params.appointment_id})
-        // Expected response is an object with status property [other properties could be appointment and message.]
-    }
-    catch(err) {
-        return res.status(500).json({"message":"Internal server error"});
-    }
+    let response = await handleMqtt('Patient/cancel_appointment/req', `Patient/${patient.email}/cancel_appointment/res`, {patient_id: patient?._id, appointment_id: req.params.appointment_id})
+    // Expected response is an object with status property [other properties could be appointment and message.]
 
     res.status(response.status).json(_.pick(response, ['message', 'isCancelled']));
 }));
