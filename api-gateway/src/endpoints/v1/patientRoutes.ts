@@ -5,6 +5,9 @@ import validateObjectId from '../../middlewares/validObjectId'
 import asyncwrapper from "../../middlewares/asyncwrapper";
 import authPatient from "../../middlewares/authPatient";
 import bcrypt from 'bcrypt';
+import {client, handleMqtt} from "../../mqttConnection";
+import _ from 'lodash';
+import { randomUUID } from "crypto";
 
 const router = express.Router() 
 
@@ -26,14 +29,41 @@ router.get('/:id', [validateObjectId, authPatient],asyncwrapper(async (req: Requ
     res.status(200).json(patient);
 }));
 
-router.get('/:id/appointments', asyncwrapper( async(req: Request, res: Response) => {
-    // TODO: MQTT connection with appointment system
+router.get('/:id/appointments', [validateObjectId], asyncwrapper( async(req: Request, res: Response) => {
+    let patient = await Patient.findById(req.params.id);
+    if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
+
+    if(!client.connected) return res.status(500).json({"message":"Internal server error"});
+
+    let responseTopic: string = randomUUID();
+
+    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${responseTopic}/get_appointments/res`, {patientId: patient._id, responseTopic})
+    // Expected response is an array of appointments [Last element in array is response status]  
+    res.status(200).json(response);
 }));
 
 router.get('/:id/appointments/:appointment_id', asyncwrapper( async(req: Request, res: Response) => {
-    // TODO: MQTT connection with appointment system
-}));
+    let patient = await Patient.findById(req.params.id);
+    if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
 
+    if(!client.connected) return res.status(500).json({"message":"Internal server error"});
+
+    let responseTopic: string = randomUUID();
+
+    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${responseTopic}/get_appointments/res`, {patientId: patient._id, responseTopic: responseTopic})
+    // Expected response is an array of appointments [Last element in array is response status]
+
+
+    let appointment = response.find((appointment:any) => {
+        if(appointment._id === req.params.appointment_id){
+            return appointment;
+        }
+    })
+
+    if(!appointment) return res.status(404).json({"message": "Appointment with given id was not found"});
+    
+    return res.status(200).json(appointment);
+}));
 
 // POST requests
 router.post('/', asyncwrapper( async(req: Request, res: Response) => {
@@ -68,8 +98,18 @@ router.post('/login', asyncwrapper( async(req: Request, res: Response) => {
     res.status(201).json({patient, "token": token});
 }));
 
-router.post('/appointments', asyncwrapper(async(req: Request, res: Response) => {
-    // TODO: MQTT connection with appointment system
+router.post('/:id/appointments', [validateObjectId, authPatient], asyncwrapper(async(req: Request, res: Response) => {
+    let patient = await Patient.findById(req.params.id);
+    if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
+
+    if(!client.connected) return res.status(500).json({"message":"Internal server error"});
+
+    let responseTopic: string = randomUUID();
+    
+    let response = await handleMqtt('Patient/make_appointment/req', `Patient/${responseTopic}/make_appointment/res`, {patientId: patient?._id, _id: req.body._id, responseTopic: responseTopic})
+    // Expected response is an object with status property [other properties could be appointment and message.]
+
+    res.status(201).json(response);
 }));
 
 // PUT requests
@@ -99,8 +139,18 @@ router.delete('/:id', [validateObjectId], asyncwrapper(async (req: Request, res:
     res.status(200).json(patient);
 }));
 
-router.delete('/appointments/:appointment_id', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res:Response) => {
-    // TODO: MQTT connection implementation with appointment system
+router.delete('/:id/appointments/:appointment_id', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res:Response) => {
+    let patient = await Patient.findById(req.params.id);
+    if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
+
+    if(!client.connected) return res.status(500).json({"message":"Internal server error"});
+
+    let responseTopic: string = randomUUID();
+
+    let response = await handleMqtt('Patient/cancel_appointment/req', `Patient/${responseTopic}/cancel_appointment/res`, {patientId: patient?._id, _id: req.params._id, responseTopic: responseTopic})
+    // Expected response is an object with status property [other properties could be appointment and message.]
+
+    res.status(200).json(_.pick(response, ['message', 'isCancelled']));
 }));
 
 // Exporting the router object
