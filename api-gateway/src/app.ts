@@ -26,7 +26,7 @@ app.use(errorHandlerMiddleware)
 //v1 routes
 routerV1(app);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Welcome to Express & TypeScript Server');

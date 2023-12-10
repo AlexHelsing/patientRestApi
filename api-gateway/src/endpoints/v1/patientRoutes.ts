@@ -29,7 +29,7 @@ router.get('/:id', [validateObjectId, authPatient],asyncwrapper(async (req: Requ
     res.status(200).json(patient);
 }));
 
-router.get('/:id/appointments', [validateObjectId], asyncwrapper( async(req: Request, res: Response) => {
+router.get('/:id/appointments', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res: Response) => {
     let patient = await Patient.findById(req.params.id);
     if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
 
@@ -37,7 +37,7 @@ router.get('/:id/appointments', [validateObjectId], asyncwrapper( async(req: Req
 
     let responseTopic: string = randomUUID();
 
-    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${responseTopic}/get_appointments/res`, {patientId: patient._id, responseTopic})
+    let response = await handleMqtt('Patient/get_appointments/req', `Patient/${responseTopic}/get_appointments/res`, {patient_id: patient._id, response_topic: responseTopic})
     // Expected response is an array of appointments [Last element in array is response status]  
     res.status(200).json(response);
 }));
@@ -79,8 +79,8 @@ router.post('/', asyncwrapper( async(req: Request, res: Response) => {
     let token = await patient.signJWT();
 
     let result = await patient.save()
-
-    return res.status(201).json({"token": token, patient}) 
+    
+    return res.status(201).json({"token": token, ..._.pick(patient, ['_id', 'phone_number', 'firstname', 'lastname', 'email'])}); 
 }));
 
 router.post('/login', asyncwrapper( async(req: Request, res: Response) => {
@@ -94,8 +94,8 @@ router.post('/login', asyncwrapper( async(req: Request, res: Response) => {
     if(!match) return res.status(403).json({"message":"Wrong password"});
 
     let token = await patient.signJWT();
-
-    res.status(201).json({patient, "token": token});
+    
+    res.status(201).json({..._.pick(patient, ['_id', 'phone_number', 'firstname', 'lastname', 'email']), "token": token});
 }));
 
 router.post('/:id/appointments', [validateObjectId, authPatient], asyncwrapper(async(req: Request, res: Response) => {
@@ -106,10 +106,10 @@ router.post('/:id/appointments', [validateObjectId, authPatient], asyncwrapper(a
 
     let responseTopic: string = randomUUID();
     
-    let response = await handleMqtt('Patient/make_appointment/req', `Patient/${responseTopic}/make_appointment/res`, {patientId: patient?._id, _id: req.body._id, responseTopic: responseTopic})
+    let response = await handleMqtt('Patient/make_appointment/req', `Patient/${responseTopic}/make_appointment/res`, {patient_id: patient?._id, appointment_id: req.body.appointment_id, response_topic: responseTopic})
     // Expected response is an object with status property [other properties could be appointment and message.]
 
-    res.status(201).json(response);
+    res.status(response.status).json(response);
 }));
 
 // PUT requests
@@ -147,10 +147,10 @@ router.delete('/:id/appointments/:appointment_id', [validateObjectId, authPatien
 
     let responseTopic: string = randomUUID();
 
-    let response = await handleMqtt('Patient/cancel_appointment/req', `Patient/${responseTopic}/cancel_appointment/res`, {patientId: patient?._id, _id: req.params._id, responseTopic: responseTopic})
+    let response = await handleMqtt('Patient/cancel_appointment/req', `Patient/${responseTopic}/cancel_appointment/res`, {patient_id: patient?._id, appointment_id: req.params.appointment_id, response_topic: responseTopic})
     // Expected response is an object with status property [other properties could be appointment and message.]
 
-    res.status(200).json(_.pick(response, ['message', 'isCancelled']));
+    res.status(200).json(_.pick(response, ['message']));
 }));
 
 // Exporting the router object
