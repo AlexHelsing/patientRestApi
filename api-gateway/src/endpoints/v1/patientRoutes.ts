@@ -72,7 +72,7 @@ router.post('/', asyncwrapper( async(req: Request, res: Response) => {
     if(error) return res.status(403).json({"message": "Invalid patient information" + error.details[0].message});
 
     let patient = await Patient.findOne({email: req.body.email});
-    if(patient) return res.status(409).json({"message": "Dentist with given email already exists"});
+    if(patient) return res.status(409).json({"message": "Patient with given email already exists"});
 
     patient = new Patient(req.body);
     await patient.hashPassword()
