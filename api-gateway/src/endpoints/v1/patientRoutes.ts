@@ -139,7 +139,8 @@ router.delete('/:id', [validateObjectId], asyncwrapper(async (req: Request, res:
     res.status(200).json(patient);
 }));
 
-router.delete('/:id/appointments/:appointment_id', [validateObjectId, authPatient], asyncwrapper( async(req: Request, res:Response) => {
+// Cancel appointment from patient
+router.put('/:id/appointments/:appointment_id', [validateObjectId], asyncwrapper( async(req: Request, res:Response) => {
     let patient = await Patient.findById(req.params.id);
     if(!patient) return res.status(404).json({"message":"Patient with given id was not found."});
 
