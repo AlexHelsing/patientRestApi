@@ -13,7 +13,7 @@ import { client, handleMqtt } from '../../mqttConnection';
 import _ from 'lodash';
 import { randomUUID } from 'crypto';
 import pusher from '../../utils/pusher';
-const axios = require('axios');
+import axios from 'axios';
 
 const router = express.Router();
 
@@ -65,7 +65,7 @@ router.get(
     let response = await handleMqtt(
       'Patient/get_appointments/req',
       `Patient/${responseTopic}/get_appointments/res`,
-      { patient_id: patient._id, response_topic: responseTopic }
+      { patientId: patient._id, responseTopic: responseTopic }
     );
     
     // Fetch names for clinics
@@ -219,13 +219,30 @@ router.post(
       'Patient/make_appointment/req',
       `Patient/${responseTopic}/make_appointment/res`,
       {
-        patient_id: patient?._id,
-        appointment_id: req.body.appointment_id,
-        response_topic: responseTopic,
+        patientId: patient?._id,
+        appointmentId: req.body.appointmentId,
+        responseTopic: responseTopic,
       }
     );
-    // Expected response is an object with status property [other properties could be appointment and message.]
+  
+    if(response.status === 201) {
+      let notification = {
+        subject: "booking",
+        date: response.date,
+        startTime: response.startTime,
+        endTime: response.endTime, 
+        dentistId: response.dentistId
+      }
+      axios.post(`${process.env.DENTIST_SERVICE}/dentists/notification`, notification)
+      .then((res) => {
+        console.log(res.status)
+      })
+      .catch((err) => {
+        console.log(`Notification error: ${err.response.data}, status: ${err.response.status}`)
+      });
+    }
 
+    // Expected response is an object with status property [other properties could be appointment and message.]
     pusher.trigger('global-channel', 'appointment-event', {});
 
     res.status(response.status).json(response);
@@ -298,17 +315,33 @@ router.put(
       'Patient/cancel_appointment/req',
       `Patient/${responseTopic}/cancel_appointment/res`,
       {
-        patient_id: patient?._id,
-        appointment_id: req.params.appointment_id,
-        response_topic: responseTopic,
+        patientId: patient?._id,
+        appointmentId: req.params.appointment_id,
+        responseTopic: responseTopic,
       }
     );
 
+    if(response.status === 200) {
+      let notification = {
+        subject: "cancelling",
+        date: response.date,
+        startTime: response.startTime,
+        endTime: response.endTime, 
+        dentistId: response.dentistId
+      }
+      axios.post(`${process.env.DENTIST_SERVICE}/dentists/notification`, notification)
+      .then((res) => {
+        console.log(res.status)
+      })
+      .catch((err) => {
+        console.log(`Notification error: ${err.response.data}, status: ${err.response.status}`)
+      });
+    }
     pusher.trigger('global-channel', 'appointment-event', {});
 
     // Expected response is an object with status property [other properties could be appointment and message.]
 
-    res.status(200).json(_.pick(response, ['message']));
+    res.status(response.status).json(response);
   })
 );
 
