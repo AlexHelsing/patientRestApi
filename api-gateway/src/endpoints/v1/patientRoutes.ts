@@ -17,6 +17,9 @@ import axios from 'axios';
 
 const router = express.Router();
 
+const clinicAPI: string = "http://localhost:4000/api/v1/clinics/";
+const dentistAPI: string = "http://localhost:4000/api/v1/dentists/";
+
 // Dentist HTTP Handlers
 // GET Requests
 
@@ -64,8 +67,30 @@ router.get(
       `Patient/${responseTopic}/get_appointments/res`,
       { patientId: patient._id, responseTopic: responseTopic }
     );
+    
+    // Fetch names for clinics
+    let clinicsInfo = await Promise.all(response.map(async appointment => {
+      let clinicId = appointment.clinicId;
+      let clinicResponse = await axios.get(`http://localhost:4000/api/v1/clinics/name/${clinicId}`);
+      return {
+        clinicId: clinicId,
+        clinicName: clinicResponse.data 
+      };
+    }));
+    
+
+    // We merge the names with the appointments received
+    const clinicMap = new Map(clinicsInfo.map(clinic => [clinic.clinicId, clinic.clinicName]));
+    const newAppointments = response.map(appointment => {
+      const clinicName = clinicMap.get(appointment.clinicId); 
+      return {
+        ...appointment,
+        clinicName: clinicName
+      };
+    });
+
     // Expected response is an array of appointments [Last element in array is response status]
-    res.status(200).json(response);
+    res.status(200).json(newAppointments);
   })
 );
 
